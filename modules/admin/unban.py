@@ -1,5 +1,5 @@
 """
-/ban command - Ban user (admin only)
+/unban command - Unban user (Admin only)
 """
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
@@ -9,40 +9,36 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Ban a user"""
+async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Unban a user"""
     user_id = update.effective_user.id
     
     if user_id not in ADMIN_IDS:
         await update.message.reply_text("❌ You do not have permission")
         return
     
-    if len(context.args) < 2:
+    if not context.args:
         await update.message.reply_text(
-            "⛔ <b>BAN USER</b>\n\n"
-            "Usage: /ban @username reason",
+            "✅ <b>UNBAN USER</b>\n\n"
+            "Usage: /unban @username",
             parse_mode="HTML"
         )
         return
     
     target_username = context.args[0].lstrip('@')
-    reason = ' '.join(context.args[1:])
-    
     target = db.db.users.find_one({"username": target_username})
     
     if not target:
         await update.message.reply_text("❌ User not found")
         return
     
-    db.ban_user(target['user_id'], reason)
+    db.unban_user(target['user_id'])
     
     await update.message.reply_text(
-        f"✅ <b>USER BANNED</b>\n\n"
-        f"User: @{target['username']}\n"
-        f"Reason: {reason}",
+        f"✅ <b>USER UNBANNED</b>\n\n"
+        f"User: @{target['username']}",
         parse_mode="HTML"
     )
-    
-    logger.warning(f"User banned: {target['user_id']} - Reason: {reason}")
+    logger.info(f"User unbanned: {target['user_id']}")
 
-ban_handler = CommandHandler('ban', ban_command)
+unban_handler = CommandHandler('unban', unban_command)
