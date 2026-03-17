@@ -1,5 +1,5 @@
 """
-/friend command - Add friend
+/unfriend command - Remove friend
 """
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler
@@ -8,18 +8,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def friend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Add friend"""
+async def unfriend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Remove friend"""
     user_id = update.effective_user.id
     
     user = db.get_user(user_id)
     if not user:
-        await update.message.reply_text("❌ Use /start first")
+        await update.message.reply_text("❌ Please use /start to register first")
         return
     
     if not context.args:
         await update.message.reply_text(
-            "👥 <b>ADD FRIEND</b>\n\nUsage: /friend @username",
+            "❌ <b>REMOVE FRIEND</b>\n\n"
+            "Usage: /unfriend @username",
             parse_mode="HTML"
         )
         return
@@ -31,22 +32,20 @@ async def friend_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ User not found")
         return
     
-    if target['user_id'] == user_id:
-        await update.message.reply_text("❌ Can't friend yourself!")
+    if target['user_id'] not in user.get('friends', []):
+        await update.message.reply_text(f"❌ @{target['username']} is not your friend")
         return
     
-    if target['user_id'] in user.get('friends', []):
-        await update.message.reply_text(f"✅ Already friends")
-        return
-    
+    # Remove friend
     db.db.users.update_one(
         {"user_id": user_id},
-        {"$addToSet": {"friends": target['user_id']}}
+        {"$pull": {"friends": target['user_id']}}
     )
     
     await update.message.reply_text(
-        f"✅ <b>FRIEND ADDED!</b>\n\n@{target['username']} is now your friend!",
+        f"✅ <b>FRIEND REMOVED</b>\n\n"
+        f"❌ @{target['username']} is no longer your friend",
         parse_mode="HTML"
     )
 
-friend_handler = CommandHandler('friend', friend_command)
+unfriend_handler = CommandHandler('unfriend', unfriend_command)
