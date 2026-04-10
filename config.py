@@ -29,6 +29,8 @@ if admin_ids_str:
 # ============================================================================
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 DB_NAME = os.getenv('DB_NAME', 'telegram_rpg_bot')
+WEBHOOK_URL = os.getenv('WEBHOOK_URL', '').strip()
+WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '8080'))
 
 # ============================================================================
 # LOGGING CONFIGURATION

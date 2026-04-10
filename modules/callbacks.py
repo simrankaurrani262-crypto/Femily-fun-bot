@@ -665,3 +665,11 @@ garden_callback_handler = CallbackQueryHandler(garden_callback, pattern="^garden
 
 # Friends
 friends_callback_handler = CallbackQueryHandler(friends_callback, pattern="^add_friend_")
+
+# Compatibility placeholders for legacy imports in bot.py.
+async def _noop_relationship_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer("Handled by new request system.", show_alert=False)
+
+marriage_callback_handler = CallbackQueryHandler(_noop_relationship_callback, pattern=r"^(accept|reject)_marry_")
+adopt_callback_handler = CallbackQueryHandler(_noop_relationship_callback, pattern=r"^(accept|reject)_adopt_")

@@ -10,6 +10,19 @@ logger = logging.getLogger(__name__)
 HELP_TEXT = """
 <b>🎮 TELEGRAM RPG BOT - COMMAND HELP</b>
 
+<b>📋 FAMILY TREE GAME QUICK MENU</b>
+/menu - Open categorized menu
+/me - Your full profile
+/profile @user - View another user
+/friends - Friend list
+/removefriend @user - Remove friend
+/balance - Check coins
+/bet amount - Coin flip bet
+/rps rock|paper|scissors - Mini game
+/topmoney /topfamily /topgarden /topgames - Leaderboards
+/enable /disable /reset - Group controls
+/backup /restore - Data backup tools
+
 <b>📌 CORE COMMANDS</b>
 /start - Start the bot
 /profile - View your profile
