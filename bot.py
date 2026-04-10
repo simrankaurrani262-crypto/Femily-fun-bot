@@ -7,7 +7,7 @@ import asyncio
 import logging
 import os
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
-from config import TELEGRAM_TOKEN, LOG_LEVEL
+from config import TELEGRAM_TOKEN, LOG_LEVEL, WEBHOOK_URL, WEBHOOK_PORT
 from flask import Flask
 import threading
 
@@ -44,6 +44,7 @@ from modules.core.help import help_handler
 from modules.core.profile import profile_handler
 from modules.core.settings import settings_handler
 from modules.core.stats import stats_handler
+from modules.core.masterplus import masterplus_handlers, requests_callback_handler
 
 # Family
 from modules.family.family import family_handler
@@ -174,6 +175,12 @@ def main():
     logger.info("")
     logger.info("📝 Registering command handlers...")
     logger.info("")
+
+    # MASTER+ OVERRIDES / REQUIRED COMMAND ALIASES
+    for handler in masterplus_handlers:
+        app.add_handler(handler, group=-1)
+    app.add_handler(requests_callback_handler, group=-1)
+    logger.info("✅ MASTER+: aliases, requests, group controls")
     
     # CORE (6)
     app.add_handler(start_handler)
@@ -358,7 +365,18 @@ def main():
     logger.info("🚀 BOT IS RUNNING AND READY!")
     logger.info("")
     
-    app.run_polling(allowed_updates=['message', 'callback_query'])
+    if WEBHOOK_URL:
+        logger.info(f"🌐 Running in webhook mode on port {WEBHOOK_PORT}")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=WEBHOOK_PORT,
+            url_path=TELEGRAM_TOKEN,
+            webhook_url=f"{WEBHOOK_URL.rstrip('/')}/{TELEGRAM_TOKEN}",
+            allowed_updates=['message', 'callback_query'],
+        )
+    else:
+        logger.info("📡 Running in polling mode")
+        app.run_polling(allowed_updates=['message', 'callback_query'])
 
 if __name__ == '__main__':
     try:

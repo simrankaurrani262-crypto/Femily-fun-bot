@@ -10,3 +10,4 @@ requests==2.31.0
 flask
 Werkzeug==3.0.1
 numpy==1.26.2
+family-tree-viz>=0.0.8

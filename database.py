@@ -5,6 +5,7 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import PyMongoError, DuplicateKeyError
 from config import MONGO_URI, DB_NAME
 from datetime import datetime
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,8 @@ class Database:
             self.db.auctions.create_index([("auction_id", ASCENDING)], unique=True)
             self.db.games.create_index([("user_id", ASCENDING)], unique=True)
             self.db.crime.create_index([("user_id", ASCENDING)], unique=True)
+            self.db.group_settings.create_index([("chat_id", ASCENDING)], unique=True)
+            self.db.cooldowns.create_index([("user_id", ASCENDING), ("command", ASCENDING)], unique=True)
             logger.info("✅ Database indexes created")
         except Exception as e:
             logger.error(f"❌ Error creating indexes: {e}")
@@ -52,7 +55,7 @@ class Database:
     # USER OPERATIONS
     # ============================================================================
     
-    def create_user(self, user_id, username=None, first_name=None):
+    def create_user(self, user_id, username=None, first_name=None, gender="unknown", age=None):
         """Create new user with all required fields"""
         try:
             user_doc = {
@@ -63,7 +66,11 @@ class Database:
                 "bank": 0,
                 "reputation": 0,
                 "xp": 0,
+                "experience": 0,
                 "level": 1,
+                "age": age,
+                "gender": gender,
+                "status": "single",
                 "partner": None,
                 "children": [],
                 "parents": [],
@@ -362,6 +369,33 @@ class Database:
         except Exception as e:
             logger.error(f"❌ Error processing adoption: {e}")
             return False
+
+    def add_partner(self, user1_id, user2_id):
+        """Compatibility helper for older handlers"""
+        return self.marry(user1_id, user2_id)
+
+    def add_child(self, parent_id, child_id):
+        """Compatibility helper for older handlers"""
+        return self.adopt(parent_id, child_id)
+
+    def get_siblings(self, user_id):
+        """Get siblings based on shared parents"""
+        try:
+            family = self.get_family(user_id)
+            parent_ids = family.get("parents", []) if family else []
+            if not parent_ids:
+                return []
+
+            sibling_ids = set()
+            for parent_id in parent_ids:
+                parent_family = self.get_family(parent_id)
+                for child_id in parent_family.get("children", []) if parent_family else []:
+                    if child_id != user_id:
+                        sibling_ids.add(child_id)
+            return list(sibling_ids)
+        except Exception as e:
+            logger.error(f"❌ Error getting siblings: {e}")
+            return []
     
     def disown(self, parent_id, child_id):
         """Disown a child"""
@@ -1135,6 +1169,91 @@ class Database:
         except Exception as e:
             logger.error(f"❌ Error getting stats: {e}")
             return {}
+
+    # ============================================================================
+    # GROUP / COOLDOWN / BACKUP OPERATIONS
+    # ============================================================================
+
+    def set_group_enabled(self, chat_id, enabled=True):
+        try:
+            self.db.group_settings.update_one(
+                {"chat_id": chat_id},
+                {"$set": {"enabled": enabled, "updated_at": datetime.utcnow()}},
+                upsert=True
+            )
+            return True
+        except Exception as e:
+            logger.error(f"❌ Error setting group enabled: {e}")
+            return False
+
+    def is_group_enabled(self, chat_id):
+        try:
+            setting = self.db.group_settings.find_one({"chat_id": chat_id})
+            if setting is None:
+                return True
+            return setting.get("enabled", True)
+        except Exception as e:
+            logger.error(f"❌ Error checking group enabled state: {e}")
+            return True
+
+    def set_cooldown(self, user_id, command, seconds):
+        """Set a command cooldown for a user."""
+        try:
+            self.db.cooldowns.update_one(
+                {"user_id": user_id, "command": command},
+                {"$set": {"expires_at": datetime.utcnow().timestamp() + seconds}},
+                upsert=True,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"❌ Error setting cooldown: {e}")
+            return False
+
+    def get_cooldown_remaining(self, user_id, command):
+        """Return remaining cooldown seconds, 0 if available."""
+        try:
+            row = self.db.cooldowns.find_one({"user_id": user_id, "command": command})
+            if not row:
+                return 0
+            remaining = int(row.get("expires_at", 0) - datetime.utcnow().timestamp())
+            return max(0, remaining)
+        except Exception as e:
+            logger.error(f"❌ Error reading cooldown: {e}")
+            return 0
+
+    def export_backup(self, filepath="backup.json"):
+        """Export key collections to a JSON backup file."""
+        try:
+            payload = {
+                "users": list(self.db.users.find({}, {"_id": 0})),
+                "families": list(self.db.families.find({}, {"_id": 0})),
+                "friends": list(self.db.friends.find({}, {"_id": 0})),
+                "gardens": list(self.db.gardens.find({}, {"_id": 0})),
+                "economy": list(self.db.economy.find({}, {"_id": 0})),
+                "games": list(self.db.games.find({}, {"_id": 0})),
+                "cooldowns": list(self.db.cooldowns.find({}, {"_id": 0})),
+            }
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
+            return filepath
+        except Exception as e:
+            logger.error(f"❌ Error exporting backup: {e}")
+            return None
+
+    def restore_backup(self, filepath="backup.json"):
+        """Restore collections from a backup file."""
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            for name in ["users", "families", "friends", "gardens", "economy", "games", "cooldowns"]:
+                if name in payload:
+                    self.db[name].delete_many({})
+                    if payload[name]:
+                        self.db[name].insert_many(payload[name])
+            return True
+        except Exception as e:
+            logger.error(f"❌ Error restoring backup: {e}")
+            return False
 
 # Create global database instance
 db = Database()

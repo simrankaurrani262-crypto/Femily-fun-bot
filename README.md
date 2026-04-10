@@ -86,6 +86,11 @@ python bot.py
 ```
 telegram_rpg_bot/
 ├── bot.py                    # Main entry point
+├── bot/                      # Compatibility structure for deployments
+│   ├── main.py
+│   ├── config.py
+│   ├── database.py
+│   └── handlers/
 ├── config.py                 # Configuration management
 ├── database.py               # MongoDB operations
 ├── requirements.txt          # Python dependencies
@@ -166,7 +171,9 @@ telegram_rpg_bot/
 ```
 /start       - Register/start bot
 /help        - View help
-/profile     - View profile
+/menu        - Open full categorized menu
+/me          - View your profile
+/profile @u  - View another profile
 /settings    - Change settings
 ```
 
@@ -175,18 +182,38 @@ telegram_rpg_bot/
 /family      - View family info
 /tree        - Generate family tree (IMAGE)
 /fulltree    - View full family structure
-/marry       - Marry someone
-/adopt       - Adopt someone
+/marry       - Propose marriage (Accept/Reject buttons)
+/divorce     - Divorce partner
+/adopt       - Adopt request (Accept/Reject buttons)
+/parents     - View parents
 /children    - View children
+/siblings    - View siblings
 ```
 
 ### Economy
 ```
+/balance     - Check balance
 /daily       - Claim daily reward (100💰)
-/account     - View balance
+/work        - Earn coins
 /pay         - Pay another player
-/job         - View jobs
-/shop        - Browse shop
+/account     - View balance
+```
+
+### Social
+```
+/friend      - Friend request
+/friends     - Friend list
+/removefriend - Remove friend
+```
+
+### Mini Games
+```
+/lottery /bet /dice /rps /nation
+```
+
+### Group Admin
+```
+/enable /disable /reset /ban
 ```
 
 ### Crime
@@ -332,3 +359,18 @@ Apache 2.0 - See LICENSE file
 **Made with ❤️ by simrankaurrani262-crypto**
 
 ⭐ If you found this useful, please star the repository!
+## ☁️ Deployment (Railway / Render / VPS)
+
+### Railway
+1. Create a new Railway project and connect this repository.
+2. Set env vars: `TELEGRAM_TOKEN`, `MONGO_URI`, `DB_NAME`, `ADMIN_IDS`.
+3. For webhook mode set `WEBHOOK_URL=https://<your-railway-domain>` and optional `WEBHOOK_PORT`.
+4. Start command: `python bot.py`.
+
+### Render
+1. Create a Background Worker service from this repo.
+2. Add the same environment variables.
+3. Use `python bot.py` as start command (polling) or set `WEBHOOK_URL` for webhook mode.
+
+### VPS
+Follow `DEPLOY.md` for systemd/docker deployment.
